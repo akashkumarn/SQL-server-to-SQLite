@@ -1,7 +1,3 @@
-Perfect 🚀 Here’s a **draft README.md** for your GitHub project. You can copy this into your repo and tweak as needed:
-
----
-
 # SQL Server ➝ SQLite Migrator
 
 A simple Python-based tool (with GUI) that **migrates a SQL Server database into a SQLite file**.
