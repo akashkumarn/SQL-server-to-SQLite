@@ -5,24 +5,21 @@ import sqlite3
 from collections import defaultdict
 
 def run_migration(server, database, username, password):
-    # (move your current code here, just replace hardcoded connection strings
-    # with these parameters)
 
-    # --- SQL Server connection ---
     conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
     sql_conn = pyodbc.connect(conn_str)
     sql_cursor = sql_conn.cursor()
 
-    # --- SQLite connection ---
+    
     sqlite_conn = sqlite3.connect('output.db')
     sqlite_cursor = sqlite_conn.cursor()
     sqlite_cursor.execute("PRAGMA foreign_keys = OFF;")  # temporarily disable
 
-    # --- Fetch all tables ---
+    
     sql_cursor.execute("SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE'")
     tables = sql_cursor.fetchall()
 
-    # --- Helper functions ---
+    
     def get_columns(schema, table):
         sql_cursor.execute(f"""
             SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, CHARACTER_MAXIMUM_LENGTH
@@ -70,13 +67,13 @@ def run_migration(server, database, username, password):
             AND fk.ORDINAL_POSITION = pkc.ORDINAL_POSITION
             WHERE fk.TABLE_SCHEMA='{schema}' AND fk.TABLE_NAME='{table}'
         """)
-        return sql_cursor.fetchall()  # returns (fk_col, ref_schema, ref_table, ref_col)
+        return sql_cursor.fetchall()
 
     def map_type(col_type, char_len):
         
         if col_type in ('int', 'bigint', 'smallint', 'tinyint'):
             return 'INTEGER'
-        elif col_type in ('geography', 'geometry'): # Add a case for geography/geometry
+        elif col_type in ('geography', 'geometry'): 
             return 'TEXT'
         elif col_type in ('decimal', 'numeric', 'money', 'smallmoney', 'float', 'real'):
             return 'REAL'
@@ -89,10 +86,10 @@ def run_migration(server, database, username, password):
         else:
             return 'TEXT'
 
-    # --- Step 1: Build table schemas and FK mapping ---
+    
     table_schemas = {}
     fk_constraints = {}
-    sqlite_name_map = {}  # schema.table -> schema_table
+    sqlite_name_map = {} 
 
     for schema, table in tables:
         full_table_name = f"{schema}.{table}"
@@ -115,13 +112,13 @@ def run_migration(server, database, username, password):
                     col_def += ' NOT NULL'
                 col_defs.append(col_def)
 
-            # Add UNIQUE constraints
+            
             for constraint_name, cols in unique_constraints.items():
                 col_defs.append('UNIQUE (' + ', '.join([f'"{c}"' for c in cols]) + ')')
 
             table_schemas[full_table_name] = col_defs
 
-            # Initialize FK list
+            
             fk_constraints[full_table_name] = []
             for fk_col, ref_schema, ref_table, ref_col in fks:
                 fk_constraints[full_table_name].append({
@@ -135,7 +132,7 @@ def run_migration(server, database, username, password):
         except Exception as e:
             print(f"Error processing table {full_table_name}: {e}")
 
-    # --- Step 2: Topological sort to respect FK dependencies ---
+    
     sorted_tables = []
     visited = {}
 
@@ -158,7 +155,7 @@ def run_migration(server, database, username, password):
         full_table_name = f"{schema}.{table}"
         visit(full_table_name)
 
-    # --- Step 3: Create tables in SQLite with FKs ---
+    
     for full_table_name in sorted_tables:
         columns_sql = table_schemas[full_table_name]
         sqlite_table_name = sqlite_name_map[full_table_name]
@@ -180,7 +177,7 @@ def run_migration(server, database, username, password):
         except sqlite3.Error as e:
             print(f"Error creating table {sqlite_table_name}: {e}")
 
-    # --- Step 4: Handle cyclic FKs (if any) ---
+    
     all_tables = set(f"{schema}.{table}" for schema, table in tables)
     cyclic_tables = all_tables - set(sorted_tables)
     for full_table_name in cyclic_tables:
@@ -194,10 +191,7 @@ def run_migration(server, database, username, password):
         sqlite_cursor.execute(f'INSERT INTO "{sqlite_table_name}" SELECT * FROM "{sqlite_table_name}_temp";')
         sqlite_cursor.execute(f'DROP TABLE "{sqlite_table_name}_temp";')
 
-    # --- Step 5: Commit and close ---
-    # --- Step 6: Migrate data from SQL Server to SQLite ---
-
-    # --- Step 6: Migrate data from SQL Server to SQLite (with type conversion) ---
+    
     for full_table_name in sorted_tables:
         schema, table = full_table_name.split('.')
         sqlite_table_name = sqlite_name_map[full_table_name]
