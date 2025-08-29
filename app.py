@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 
-# Import your migration function
+
 from sql_to_sqlite import run_migration
 
 def start_migration():
@@ -15,7 +15,7 @@ def start_migration():
         messagebox.showerror("Error", "All fields are required!")
         return
 
-    # Run migration in a separate thread (so GUI doesn’t freeze)
+    
     def task():
         try:
             run_migration(server, database, username, password)
@@ -25,7 +25,7 @@ def start_migration():
 
     threading.Thread(target=task).start()
 
-# --- Tkinter GUI ---
+
 root = tk.Tk()
 root.title("SQL Server ➝ SQLite Migrator")
 
